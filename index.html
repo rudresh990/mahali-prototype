@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mahali — Phase 1 UI Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+/* Colours are taken from the Mahali brand board:
+   yellow #dbd670 · bright yellow #ebe979 · light beige #f1f0dc · dark beige #e4dfbe
+   green #41ccb0 / #30cdb0 · darker brown #3d3b3a · lighter brown #7d5738
+   forest / pine / mist / cream / brick / gold are derived shades so text and buttons stay readable on the palette greens. */
+tailwind.config={theme:{extend:{
+  colors:{
+    sun:{DEFAULT:'#dbd670',bright:'#ebe979'}, beige:'#f1f0dc', sand:'#e4dfbe',
+    mint:{DEFAULT:'#41ccb0',aqua:'#30cdb0'}, bark:'#3d3b3a', clay:'#7d5738',
+    forest:{DEFAULT:'#2f7a63',dark:'#266552'}, pine:'#1f4d3f', mist:'#e6f7f2', cream:'#fbfaf3',
+    brick:'#b4533a', gold:'#e3c13c'
+  },
+  fontFamily:{sans:['Inter','system-ui','sans-serif'],head:['Poppins','Inter','system-ui','sans-serif'],display:['Lora','Georgia','serif']}
+}}}
+</script>
+<style type="text/tailwindcss">
+@layer components{
+  .btn{@apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold font-head transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-cream}
+  .btn-primary{@apply bg-forest text-white hover:bg-forest-dark shadow-sm}
+  .btn-secondary{@apply bg-sun text-bark hover:bg-sun-bright}
+  .btn-outline{@apply border border-mint bg-white text-forest hover:bg-mist}
+  .btn-ghost{@apply text-forest hover:bg-mist}
+  .btn-danger{@apply bg-brick text-white hover:opacity-90}
+  .btn-sm{@apply px-3 py-1.5 text-xs rounded-lg}
+  .card{@apply bg-white border border-sand/70 rounded-2xl}
+  .input{@apply w-full min-w-0 rounded-xl border border-sand bg-white px-3.5 py-2.5 text-sm text-bark placeholder:text-bark/40 focus:outline-none focus:border-mint focus:ring-2 focus:ring-mint/30}
+  .label{@apply block text-xs font-semibold text-bark/70 mb-1.5 font-head}
+  .chip{@apply inline-flex items-center gap-1 rounded-full bg-beige px-2.5 py-1 text-xs font-medium text-bark/80}
+  .chip-on{@apply bg-forest text-white}
+  .navlink.on{@apply text-forest bg-mist}
+  .h1d{@apply font-display font-bold text-pine tracking-tight}
+}
+:root{--bg:#fbfaf3;--ink:#3d3b3a;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{background:var(--bg);scroll-padding-top:calc(env(safe-area-inset-top,0px) + 84px)}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.card-shadow{box-shadow:0 1px 2px rgba(61,59,58,.04),0 10px 28px -14px rgba(61,59,58,.16)}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.anim-up{animation:up .2s ease both}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] btn btn-primary">Skip to content</a>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root" class="fixed z-[90] inset-x-0 bottom-4 flex flex-col items-center gap-2 px-4 pointer-events-none"></div>
+<script>
+'use strict';
+const ICONS={
+search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+store:'<path d="M3 9 4.5 4h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/>',
+pin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>',
+check:'<path d="M20 6 9 17l-5-5"/>',
+checkcircle:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+xcircle:'<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>',
+x:'<path d="M18 6 6 18M6 6l12 12"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+arrowL:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
+clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+tag:'<path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/>',
+grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4M12 17h.01"/>',
+info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+refresh:'<path d="M21 12a9 9 0 0 0-15-6.7L3 8M3 3v5h5M3 12a9 9 0 0 0 15 6.7L21 16M21 21v-5h-5"/>',
+eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+coffee:'<path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v3M10 2v3M14 2v3"/>'
+};
+const ic=(n,c='w-5 h-5')=>`<svg class="${c} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
+const STAR=ICONS.star.match(/points="([^"]+)"/)[1];
+const starF=(c='w-4 h-4')=>`<svg class="${c}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="${STAR}"/></svg>`;
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const A={},F={},I={};
+const S=Object.assign({user:null},(()=>{try{return JSON.parse(localStorage.getItem('mahali_sow'))||{}}catch(e){return{}}})());
+const persist=()=>{try{localStorage.setItem('mahali_sow',JSON.stringify(S))}catch(e){}};
+const role=()=>S.user?S.user.role:'visitor';
+let CUR={path:'/'};
+
+/* ── helpers ── */
+function toast(msg,type='ok'){const el=document.createElement('div');el.className='anim-up pointer-events-auto flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-lg max-w-sm '+(type==='err'?'bg-brick text-white':'bg-pine text-white');el.setAttribute('role','status');el.innerHTML=ic(type==='err'?'alert':'checkcircle','w-4 h-4')+`<span>${esc(msg)}</span>`;$('#toast-root').appendChild(el);setTimeout(()=>el.remove(),3400)}
+function modal(html,o={}){$('#modal-root').innerHTML=`<div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center" role="dialog" aria-modal="true"><div class="absolute inset-0 bg-bark/50" data-act="close"></div><div class="relative anim-up w-full ${o.w||'sm:max-w-md'} max-h-[92vh] overflow-y-auto bg-cream rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl" style="padding-bottom:calc(1.25rem + env(safe-area-inset-bottom,0px))">${html}</div></div>`;document.body.style.overflow='hidden'}
+function closeModal(){const r=$('#modal-root');if(r&&r.innerHTML){r.innerHTML='';document.body.style.overflow=''}}
+const mHead=(t,s)=>`<div class="flex items-start justify-between gap-4 mb-4"><div class="min-w-0"><h2 class="font-head font-semibold text-lg text-pine">${t}</h2>${s?`<p class="text-sm text-bark/60 mt-0.5">${s}</p>`:''}</div><button data-act="close" class="btn btn-ghost !p-2 -mr-2 -mt-1" aria-label="Close">${ic('x')}</button></div>`;
+let CONF=null;
+function confirmBox(o){CONF=o.ok;modal(`${mHead(o.title,o.text)}<div class="flex gap-2 justify-end mt-2"><button data-act="close" class="btn btn-outline">Cancel</button><button data-act="confirmOk" class="btn ${o.danger?'btn-danger':'btn-primary'}">${o.label||'Confirm'}</button></div>`)}
+A.close=()=>closeModal();A.confirmOk=()=>{const f=CONF;CONF=null;closeModal();f&&f()};
+const RESTRICTED=['scam','fake','counterfeit'];/* placeholder — Mahali supplies the real restricted-word list */
+const restricted=t=>RESTRICTED.find(w=>new RegExp('\\b'+w+'\\b','i').test(t||''));
+const rw=v=>restricted(v)?'This contains a restricted word. Please remove it to continue.':'';
+function fld(o){const id='f_'+o.n;let attr=o.attr||'',cnt='';if(o.max){attr+=` maxlength="${o.max}" data-input="cnt"`;cnt=`<span class="text-[11px] text-bark/50" data-cnt="${o.n}">${(o.v||'').length} / ${o.max}</span>`}
+ let inner;if(o.opts)inner=`<select id="${id}" name="${o.n}" class="input" ${attr}>${o.opts.map(x=>{const [v,l]=Array.isArray(x)?x:[x,x];return `<option value="${esc(v)}" ${v==o.v?'selected':''}>${esc(l)}</option>`}).join('')}</select>`;
+ else if(o.rows)inner=`<textarea id="${id}" name="${o.n}" rows="${o.rows}" class="input" placeholder="${esc(o.ph||'')}" ${attr}>${esc(o.v||'')}</textarea>`;
+ else inner=`<div class="relative">${o.ic?`<span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-bark/40">${ic(o.ic,'w-4 h-4')}</span>`:''}<input id="${id}" name="${o.n}" type="${o.t||'text'}" placeholder="${esc(o.ph||'')}" value="${esc(o.v||'')}" autocomplete="${o.ac||'off'}" class="input ${o.ic?'!pl-10':''}" ${attr}></div>`;
+ return `<div class="${o.cls||''}"><div class="flex items-end justify-between gap-2 mb-1.5"><label class="label !mb-0" for="${id}">${o.l}${o.req?' <span class="text-brick">*</span>':''}</label>${cnt}</div>${inner}${o.hint?`<p class="text-[11px] text-bark/50 mt-1">${o.hint}</p>`:''}<p class="text-xs text-brick mt-1 hidden" data-err="${o.n}" role="alert"></p></div>`}
+I.cnt=t=>{const c=$(`[data-cnt="${t.name}"]`);if(c)c.textContent=t.value.length+' / '+t.maxLength};
+const pwFld=(n,l,ac)=>`<div><label class="label" for="f_${n}">${l} <span class="text-brick">*</span></label><div class="relative"><span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-bark/40">${ic('lock','w-4 h-4')}</span><input id="f_${n}" name="${n}" type="password" autocomplete="${ac}" class="input !pl-10 !pr-11"><button type="button" data-act="pwtoggle" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-bark/50 hover:text-forest" aria-label="Show password">${ic('eye','w-4 h-4')}</button></div><p class="text-xs text-brick mt-1 hidden" data-err="${n}" role="alert"></p></div>`;
+A.pwtoggle=t=>{const i=t.parentElement.querySelector('input');i.type=i.type==='password'?'text':'password'};
+function collect(root){const d={};$$('[name]',root).forEach(el=>{if(el.type==='checkbox')d[el.name]=el.checked;else if(el.type==='radio'){if(el.checked)d[el.name]=el.value}else if(el.type!=='file')d[el.name]=el.value});return d}
+function check(root,rules){const d=collect(root);let ok=true;$$('[data-err]',root).forEach(e=>{e.classList.add('hidden');e.textContent=''});$$('.input',root).forEach(e=>e.classList.remove('!border-brick'));
+ for(const k in rules){for(const r of rules[k]){const v=String(d[k]==null?'':d[k]).trim();let m='';
+  if(typeof r==='function')m=r(v,d);
+  else if(r==='req'&&!v)m='This field is required.';
+  else if(r==='email'&&v&&!/^\S+@\S+\.\S+$/.test(v))m='Enter a valid email, like name@example.com.';
+  else if(r==='phone'&&v&&!/^\+?[0-9 ]{8,15}$/.test(v))m='Enter a valid phone number, like +971 50 123 4567.';
+  else if(r==='min8'&&v.length<8)m='Use at least 8 characters.';
+  else if(r==='price'&&v&&!/^\d{1,8}(\.\d{1,2})?$/.test(v))m='Enter a price with up to two decimal places, like 25.50.';
+  if(m){ok=false;const e=$(`[data-err="${k}"]`,root);if(e){e.textContent=m;e.classList.remove('hidden')}const i=$(`[name="${k}"]`,root);if(i)i.classList.add('!border-brick');break}}}
+ if(!ok){const f=$('[data-err]:not(.hidden)',root);if(f)f.scrollIntoView({block:'center',behavior:'smooth'})}
+ return ok?d:null}
+A.submit=t=>{const c=t.closest('[data-form]');if(c&&F[c.dataset.form])F[c.dataset.form](c,t)};
+
+/* ── ui bits ── */
+const stars=(r,c='w-4 h-4')=>{let s='';for(let i=1;i<=5;i++){const f=r>=i?100:r>i-1?Math.round((r-i+1)*100):0;s+=`<span class="relative inline-block ${c}"><span class="text-sand">${starF(c)}</span><span class="absolute inset-0 overflow-hidden text-gold" style="width:${f}%">${starF(c)}</span></span>`}return `<span class="inline-flex gap-0.5" role="img" aria-label="Rated ${r} out of 5">${s}</span>`};
+let _g=0;const PAL=[['#dbd670','#41ccb0'],['#e4dfbe','#30cdb0'],['#ebe979','#7d5738'],['#41ccb0','#2f7a63'],['#f1f0dc','#dbd670'],['#7d5738','#dbd670'],['#30cdb0','#dbd670']];
+function art(h,icon='store'){const [a,b]=PAL[Math.abs(h)%PAL.length],g='g'+(++_g);return `<div class="w-full h-full"><svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" class="w-full h-full block" aria-hidden="true"><defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="400" height="260" fill="url(#${g})"/><circle cx="318" cy="66" r="34" fill="#fff" opacity=".35"/><path d="M0 190Q90 140 190 178T400 160V260H0Z" fill="#fff" opacity=".22"/><path d="M0 225Q110 185 220 218T400 205V260H0Z" fill="#3d3b3a" opacity=".1"/><g transform="translate(164 82) scale(3)" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".92">${ICONS[icon]||''}</g></svg></div>`}
+const STAT={pending:['Pending approval','bg-sun/40 text-clay'],approved:['Approved','bg-mist text-forest'],rejected:['Rejected','bg-brick/10 text-brick'],suspended:['Suspended','bg-brick/10 text-brick'],active:['Active','bg-mist text-forest'],Active:['Active','bg-mist text-forest'],'Payment failed':['Payment failed','bg-brick/10 text-brick'],Incomplete:['Payment incomplete','bg-sun/40 text-clay'],Canceled:['Canceled','bg-beige text-bark/60'],published:['Published','bg-mist text-forest'],unpublished:['Unpublished','bg-beige text-bark/60']};
+const stat=s=>{const [l,c]=STAT[s]||[s,'bg-beige'];return `<span class="chip ${c}">${l}</span>`};
+const empty=(i,t,d,cta='')=>`<div class="text-center py-12 px-4"><div class="mx-auto w-14 h-14 rounded-2xl bg-beige text-forest grid place-items-center">${ic(i,'w-7 h-7')}</div><h3 class="font-head font-semibold text-pine mt-4">${t}</h3><p class="text-sm text-bark/60 mt-1 max-w-sm mx-auto">${d}</p>${cta?`<div class="mt-5 flex flex-wrap gap-2 justify-center">${cta}</div>`:''}</div>`;
+const notice=(kind,html)=>{const k={ok:['bg-mist border-mint/40 text-pine','checkcircle'],warn:['bg-sun/30 border-sun text-bark','clock'],err:['bg-brick/10 border-brick/30 text-brick','alert'],info:['bg-beige border-sand text-bark','info']}[kind];return `<div class="rounded-2xl border p-4 flex gap-3 text-sm ${k[0]}" role="status"><span class="mt-0.5">${ic(k[1],'w-5 h-5')}</span><div class="min-w-0 flex-1">${html}</div></div>`};
+const logo=(c='h-8')=>`<span class="inline-flex items-center gap-2"><svg viewBox="0 0 48 48" class="${c} w-auto" fill="none" aria-hidden="true"><path d="M8 22 24 8l16 14v18a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3z" stroke="#dbd670" stroke-width="3.5" stroke-linejoin="round" fill="#f1f0dc"/><path d="M24 38V27" stroke="#2f7a63" stroke-width="2.5" stroke-linecap="round"/><path d="M24 29c-6 0-8-4-8-7 5 0 8 2 8 7z" fill="#41ccb0"/><path d="M24 27c0-5 3-7 8-7 0 4-2 7-8 7z" fill="#2f7a63"/></svg><span class="font-display font-bold text-2xl text-pine leading-none">Mahali</span></span>`;
+const money=n=>'AED '+Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const catName=id=>{const c=DB.cats.find(x=>x.id===id);return c?c.name:'—'};
+const catOf=x=>x.cat==='c6'&&x.other?'Other: '+x.other:catName(x.cat);
+const pageTitle=(t,s,act='')=>`<div class="flex flex-wrap items-end justify-between gap-3 mb-6"><div class="min-w-0"><h1 class="h1d text-2xl sm:text-3xl">${t}</h1>${s?`<p class="text-sm text-bark/65 mt-1 max-w-xl">${s}</p>`:''}</div>${act}</div>`;
+const wrap=(h,w='max-w-7xl')=>`<div class="${w} mx-auto px-4 sm:px-6 py-6 sm:py-8">${h}</div>`;
+const back=(h,l)=>`<a href="#${h}" class="inline-flex items-center gap-1.5 text-sm text-forest font-medium mb-4 hover:underline">${ic('arrowL','w-4 h-4')}${l}</a>`;
+
+/* ── header (only SOW-required items, per role) ── */
+const NAVS={
+ visitor:[['/login','Log in','ghost'],['/vendor-register','Register as vendor','outline'],['/register','Register','secondary']],
+ customer:[['/feedback','Feedback'],['/account','My account']],
+ vendor:[['/dashboard/profile','Profile'],['/dashboard/listings','Listings'],['/dashboard/subscription','Subscription'],['/dashboard/feedback','Feedback']],
+ admin:[['/admin','Overview'],['/admin/vendors','Vendors'],['/admin/customers','Customers'],['/admin/listings','Listings'],['/admin/categories','Categories']]};
+const homeOf=()=>({visitor:'/',customer:'/',vendor:'/dashboard',admin:'/admin'}[role()]);
+function header(){const r=role(),items=NAVS[r],adm=r==='admin',show=adm?'lg:flex':'md:flex',hide=adm?'lg:hidden':'md:hidden';
+ const link=([p,l,k])=>k?`<a href="#${p}" class="btn ${k==='secondary'?'btn-secondary':k==='outline'?'btn-outline':'btn-ghost'}">${l}</a>`:`<a href="#${p}" data-nav="${p}" class="navlink px-3 py-2 rounded-lg text-sm font-head font-medium text-bark/70 hover:text-forest hover:bg-mist">${l}</a>`;
+ const out=r!=='visitor'?`<button data-act="logout" class="btn btn-ghost">Log out</button>`:'';
+ return `<header class="sticky z-40 bg-cream/95 backdrop-blur border-b border-sand/70" style="top:env(safe-area-inset-top,0px)"><div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3"><a href="#${homeOf()}" aria-label="Mahali">${logo()}</a><div class="flex-1"></div>
+ <nav class="hidden ${show} items-center gap-1" aria-label="Main">${items.map(link).join('')}${out}</nav>
+ <button data-act="mnav" class="${hide} btn btn-ghost !p-2 -mr-2" aria-label="Menu" aria-expanded="false">${ic('menu')}</button></div>
+ <nav id="mnav" class="hidden ${hide} border-t border-sand/70 bg-cream px-4 py-3 flex-col gap-1" aria-label="Menu">${items.map(([p,l])=>`<a href="#${p}" data-nav="${p}" class="navlink px-3 py-3 rounded-lg text-sm font-head font-medium text-bark/80">${l}</a>`).join('')}${r!=='visitor'?`<button data-act="logout" class="text-left px-3 py-3 rounded-lg text-sm font-head font-medium text-bark/80 hover:bg-mist">Log out</button>`:''}</nav></header>`}
+A.mnav=t=>{const n=$('#mnav');const open=n.classList.contains('hidden');n.classList.toggle('hidden',!open);n.classList.toggle('flex',open);t.setAttribute('aria-expanded',open)};
+function markNav(path){$$('[data-nav]').forEach(a=>a.classList.toggle('on',a.dataset.nav===path||(a.dataset.nav!=='/'&&path.startsWith(a.dataset.nav+'/'))))}
+A.logout=()=>{S.user=null;persist();toast('You have been logged out.');if((location.hash||'#/')==='#/')nav();else location.hash='#/'};
+
+/* ── router ── */
+const R=[];const route=(p,h)=>R.push([new RegExp('^'+p.replace(/:(\w+)/g,'([^/]+)')+'$'),h]);
+function nav(){const raw=location.hash.slice(1)||'/',i=raw.indexOf('?'),path=i<0?raw:raw.slice(0,i);
+ for(const [re,h] of R){const m=path.match(re);if(m){let r;try{r=h(...m.slice(1).map(decodeURIComponent))}catch(e){console.error(e);r={title:'Error',html:wrap(empty('alert','Something went wrong','Please go back and try again.'))}}
+  if(r&&r.redirect){location.hash='#'+r.redirect;return}render(r,path);return}}
+ render({title:'Page not found',html:wrap(empty('search','Page not found','This page does not exist.',`<a href="#${homeOf()}" class="btn btn-primary">Go back</a>`),'max-w-lg')},path)}
+function render(r,path){closeModal();CUR={path};$('#app').innerHTML=`${header()}<main id="main">${r.html}</main>`;document.title=(r.title?r.title+' · ':'')+'Mahali';markNav(path);window.scrollTo(0,0);if(r.after)r.after()}
+const rerender=()=>nav();
+function gate(roles,label){if(roles.includes(role()))return null;
+ return{title:'Access',html:wrap(role()==='visitor'?empty('lock','Log in to continue','This page is available after you log in.',`<a href="#/login" class="btn btn-primary">Log in</a><a href="#/register" class="btn btn-secondary">Register</a>`):empty('lock','Not available for your role','This page is only available to '+label+'.',`<a href="#${homeOf()}" class="btn btn-primary">Go back</a>`),'max-w-lg')}}
+
+/* ── global events ── */
+document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;const f=A[t.dataset.act];if(f){if(t.tagName!=='A'||t.getAttribute('href')==='#')e.preventDefault();f(t,e)}});
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.input&&I[t.dataset.input])I[t.dataset.input](t,e)});
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.change&&I[t.dataset.change])I[t.dataset.change](t,e)});
+document.addEventListener('keydown',e=>{const t=e.target;if(e.key==='Escape')closeModal();
+ if(e.key==='Enter'&&t.tagName==='INPUT'&&!['file','checkbox','radio'].includes(t.type)){const c=t.closest('[data-form]'),b=c&&c.querySelector('[data-act="submit"]');if(b){e.preventDefault();b.click()}}});
+window.addEventListener('hashchange',nav);
+const heroArt=()=>`<svg viewBox="0 0 520 400" class="w-full h-auto max-w-xl mx-auto" role="img" aria-label="Neighbours walking past a row of local shops and homes"><ellipse cx="270" cy="230" rx="250" ry="165" fill="#e4dfbe" opacity=".45"/><g fill="#e4dfbe"><rect x="250" y="112" width="34" height="160"/><rect x="292" y="84" width="40" height="188"/><rect x="342" y="132" width="30" height="140"/><rect x="60" y="150" width="30" height="120"/></g><g fill="#fff" opacity=".7"><rect x="258" y="130" width="6" height="8"/><rect x="270" y="130" width="6" height="8"/><rect x="302" y="104" width="6" height="8"/><rect x="316" y="104" width="6" height="8"/><rect x="302" y="124" width="6" height="8"/><rect x="316" y="124" width="6" height="8"/></g><ellipse cx="110" cy="60" rx="42" ry="11" fill="#fff" opacity=".85"/><ellipse cx="430" cy="42" rx="34" ry="9" fill="#fff" opacity=".85"/><path d="M0 328Q130 298 270 320T520 308V400H0Z" fill="#dbd670" opacity=".55"/><path d="M0 356Q140 336 280 353T520 346V400H0Z" fill="#e4dfbe"/>
+ <rect x="52" y="232" width="10" height="112" rx="4" fill="#7d5738"/><circle cx="57" cy="200" r="42" fill="#bcc76b"/><circle cx="30" cy="226" r="27" fill="#a9b95a"/><circle cx="84" cy="228" r="29" fill="#c9d27f"/>
+ <rect x="230" y="204" width="190" height="126" rx="6" fill="#f1f0dc"/><path d="M214 208 325 134 436 208z" fill="#7d5738"/><rect x="230" y="246" width="190" height="20" fill="#dbd670"/>${Array.from({length:9},(_,i)=>`<circle cx="${241+i*21}" cy="266" r="10.5" fill="${i%2?'#41ccb0':'#dbd670'}"/>`).join('')}<rect x="303" y="282" width="44" height="48" rx="4" fill="#2f7a63"/><rect x="246" y="284" width="40" height="34" rx="4" fill="#bfeee4"/><rect x="364" y="284" width="40" height="34" rx="4" fill="#bfeee4"/><rect x="292" y="176" width="66" height="22" rx="5" fill="#fff"/><path d="M325 181c-4 0-5-3-5-5 3 0 5 1 5 5zM325 181c0-3 2-5 5-5 0 3-1 5-5 5z" fill="#2f7a63"/>
+ <rect x="478" y="254" width="9" height="92" rx="4" fill="#7d5738"/><circle cx="482" cy="228" r="32" fill="#bcc76b"/>
+ <g><rect x="106" y="318" width="8" height="26" rx="3" fill="#3d3b3a"/><rect x="118" y="318" width="8" height="26" rx="3" fill="#3d3b3a"/><rect x="102" y="272" width="28" height="50" rx="12" fill="#2f7a63"/><circle cx="116" cy="258" r="12" fill="#a0714f"/><path d="M104 256a12 12 0 0 1 24 0c-6-5-18-5-24 0z" fill="#3d3b3a"/>
+ <rect x="146" y="320" width="7" height="24" rx="3" fill="#a0714f"/><rect x="157" y="320" width="7" height="24" rx="3" fill="#a0714f"/><path d="M142 280h26l8 44h-42z" fill="#dbd670"/><circle cx="155" cy="266" r="11" fill="#b98560"/><path d="M143 264a12 12 0 0 1 24 0v8h-24z" fill="#7d5738"/>
+ <rect x="184" y="332" width="6" height="14" rx="3" fill="#3d3b3a"/><rect x="193" y="332" width="6" height="14" rx="3" fill="#3d3b3a"/><rect x="181" y="304" width="21" height="32" rx="9" fill="#41ccb0"/><circle cx="191" cy="294" r="9" fill="#a0714f"/>
+ <rect x="212" y="336" width="5" height="12" rx="2" fill="#a0714f"/><rect x="220" y="336" width="5" height="12" rx="2" fill="#a0714f"/><rect x="209" y="314" width="19" height="26" rx="8" fill="#dbd670"/><circle cx="218" cy="305" r="8" fill="#b98560"/></g></svg>`;
+/* ── Dummy data (only entities the SOW requires) ── */
+const EM=['Abu Dhabi','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah'];
+const DB={
+ cats:[{id:'c1',name:'Food & Beverage'},{id:'c2',name:'Home Services'},{id:'c3',name:'Health & Wellness'},{id:'c4',name:'Fashion & Accessories'},{id:'c5',name:'Education'},{id:'c6',name:'Other'}],
+ plans:[{id:'pm',name:'Monthly plan',dur:'Billed every month'},{id:'py',name:'Annual plan',dur:'Billed every 12 months'}],
+ vendors:[
+ ['v1','Green Leaf Café','c1','Al Barsha, Dubai',4.8,24,0,'approved','Active','15 Oct 2026',['call','whatsapp','email','website'],'Farm-to-table breakfasts, single-origin coffee and a quiet garden corner. Our kitchen sources ingredients from local growers and everything is prepared fresh each morning.'],
+ ['v2','Palm Wellness Studio','c3','Jumeirah, Dubai',4.9,12,3,'approved','Active','02 Nov 2026',['call','whatsapp'],'Massage, physiotherapy and recovery sessions in a calm seaside studio with qualified practitioners.'],
+ ['v3','Al Noor Home Care','c2','Deira, Dubai',4.6,9,2,'approved','Active','28 Oct 2026',['call','whatsapp','email'],'Reliable AC servicing, plumbing and deep-cleaning teams available across Dubai.'],
+ ['v4','Souk Bazaar Gifts','c4','Al Karama, Dubai',4.4,50,5,'approved','Active','09 Nov 2026',['email','website'],'Handmade gifts, oud and keepsakes from UAE and regional makers.'],
+ ['v5','Little Sprouts Nursery','c5','Mirdif, Dubai',4.7,18,1,'approved','Active','20 Oct 2026',['call','email'],'A play-led nursery with bilingual teachers and a shaded outdoor garden.'],
+ ['v6','Amal Beauty Lounge','c3','Business Bay, Dubai',4.5,15,6,'suspended','Payment failed','—',['call','whatsapp'],'Hair, nails and skincare in a relaxed lounge setting.'],
+ ['v7','QuickFix Auto Garage','c2','Al Quoz, Dubai',4.3,6,2,'approved','Active','12 Oct 2026',['call','whatsapp'],'Honest servicing and repairs with photo updates while you wait.'],
+ ['v8','Majaz Bites','c1','Al Majaz, Sharjah',4.7,20,0,'approved','Active','30 Oct 2026',['call','whatsapp','website'],'Shawarma, grills and karak overlooking the Al Majaz waterfront.'],
+ ['v9','Desert Rose Bakery','c1','Al Majaz, Sharjah',null,4,4,'pending',null,'—',['call','email'],'Small-batch breads, pastries and cakes baked daily.'],
+ ['v10','Sand & Stone Interiors','c2','Khalidiyah, Abu Dhabi',null,7,5,'rejected',null,'—',['email','website'],'Interior fit-out and furniture sourcing for homes and offices.'],
+ ['v11','Falcon Movers','c2','Al Nuaimiya, Ajman',4.2,5,6,'suspended','Canceled','—',['call'],'Packing and moving across the northern emirates.']
+ ].map(([id,name,cat,address,rating,imgs,hue,status,sub,billEnd,methods,desc],i)=>({id,name,cat,other:'',desc,address,phone:'+971 4 555 0'+(140+i*7),wa:'+971 50 555 0'+(140+i*7),email:'hello@'+name.toLowerCase().replace(/[^a-z]+/g,'')+'.ae',web:name.toLowerCase().replace(/[^a-z]+/g,'')+'.ae',methods,rating,imgs,hue,status,sub,billEnd,reason:id==='v10'?'The business address is incomplete. Please add the full street address and resubmit.':'',upd:null,updReject:'',canReinstate:false,justApproved:false})),
+ listings:[
+ ['l1','v1','Weekend brunch platter','Seasonal fruit, eggs any style, sourdough toast and a hot drink of your choice.','c1',68],
+ ['l2','v1','Single-origin coffee beans (250 g)','Medium roast beans, roasted weekly.','c1',42.5],
+ ['l3','v1','Office catering trays','Sandwich and salad trays for small teams. Price on request.','c1',null],
+ ['l4','v2','60-minute deep tissue massage','Focused treatment to release tension. Booking by phone.','c3',280],
+ ['l5','v2','Recovery session','Guided stretching and foam-rolling session.','c3',150],
+ ['l6','v3','AC service','Full clean and gas check for split and window units.','c2',120],
+ ['l7','v3','Deep home cleaning','Two-person team, all supplies included.','c2',250],
+ ['l8','v4','Hand-poured oud candle','Small-batch candle in a reusable glass jar.','c4',95],
+ ['l9','v4','Personalised leather passport holder','Embossed with up to three initials.','c4',110],
+ ['l10','v5','Half-day nursery place','Monthly place for ages 2–4.','c5',1450],
+ ['l11','v7','Oil and filter change','Includes a basic vehicle check.','c2',160],
+ ['l12','v8','Chicken shawarma wrap','Served with pickles and garlic sauce.','c1',18],
+ ['l13','v8','Karak tea (large)','Freshly brewed karak.','c1',6],
+ ['l14','v3','Custom service request','Other service type — described by vendor.','c6',null]
+ ].map(([id,vid,title,desc,cat,price],i)=>({id,vid,title,desc,cat,other:cat==='c6'?'Handyman services':'',price,hue:i%7,status:'published'})),
+ customers:[
+ ['u1','Sara','Al Mansoori','sara@demo.ae','+971 50 555 0111','Dubai','saraam',3],
+ ['u2','James','Parker','james.p@mail.com','+971 55 555 0122','Dubai','jamesp',1],
+ ['u3','Fatima','Khalid','fatima.k@mail.ae','+971 52 555 0133','Sharjah','fatimak',5],
+ ['u4','Rahul','Menon','rahul.m@mail.com','+971 56 555 0144','Abu Dhabi','rahulm',1],
+ ['u5','Noor','Hussain','noor.h@mail.ae','+971 54 555 0155','Ajman','noorh',2],
+ ['u6','Lucas','Meyer','lucas.m@mail.com','+971 58 555 0166','Dubai','lucasm',0]
+ ].map(([id,first,last,email,phone,emirate,uid,logins],i)=>({id,first,last,email,phone,emirate,uid,logins,status:i===5?'suspended':'active'}))
+};
+DB.vendors[6].upd={desc:'QuickFix Auto Garage offers honest servicing and repairs, and now also same-day tyre replacement, with photo updates while you wait.',address:'Al Quoz Industrial 3, Dubai',date:'19 Sep 2026'};
+const vendor=id=>DB.vendors.find(v=>v.id===id);
+const isPublic=v=>v.status==='approved';
+const listingsOf=vid=>DB.listings.filter(l=>l.vid===vid);
+const pubListings=()=>DB.listings.filter(l=>l.status==='published'&&isPublic(vendor(l.vid)));
+/* Prototype reviewer control — NOT part of the product UI. Lets reviewers preview each role/state. */
+const DEMO={
+ visitor:null,
+ customer:{role:'customer',cid:'u1',name:'Sara Al Mansoori'},
+ vendor:{role:'vendor',vid:'v1',name:'Green Leaf Café'},
+ 'vendor-pending':{role:'vendor',vid:'v9',name:'Desert Rose Bakery'},
+ 'vendor-rejected':{role:'vendor',vid:'v10',name:'Sand & Stone Interiors'},
+ 'vendor-suspended':{role:'vendor',vid:'v6',name:'Amal Beauty Lounge'},
+ admin:{role:'admin',name:'Administrator'}
+};
+const me=()=>S.user&&S.user.role==='vendor'?vendor(S.user.vid):null;
+const meC=()=>S.user&&S.user.role==='customer'?DB.customers.find(c=>c.id===S.user.cid):null;
+/* ══════════ Browse (main page) ══════════ */
+let Q={tab:'vendors',q:'',cat:'',sort:'az'};
+const mosaic=v=>`<div class="grid grid-cols-3 grid-rows-2 gap-0.5 h-44 overflow-hidden"><div class="col-span-2 row-span-2">${art(v.hue,'store')}</div><div>${art(v.hue+1,'store')}</div><div>${art(v.hue+2,'store')}</div></div>`;
+const vendorCard=v=>`<a href="#/vendor/${v.id}" class="card card-shadow overflow-hidden flex flex-col hover:border-mint min-w-0">${mosaic(v)}<div class="p-4 flex-1 flex flex-col gap-2 min-w-0"><div class="flex items-start justify-between gap-2"><h3 class="font-head font-semibold text-pine leading-snug min-w-0 break-words">${esc(v.name)}</h3><span class="chip shrink-0">${esc(catOf(v))}</span></div><div class="flex items-center gap-1.5 text-sm">${v.rating?`${stars(v.rating)}<span class="font-semibold">${v.rating.toFixed(1)}</span>`:''}</div><p class="text-sm text-bark/70 flex items-center gap-1.5 min-w-0">${ic('pin','w-4 h-4 text-forest')}<span class="truncate">${esc(v.address)}</span></p><p class="text-sm text-bark/65 line-clamp-2">${esc(v.desc)}</p></div></a>`;
+const listingCard=(l,showV=true)=>{const v=vendor(l.vid);return `<button data-act="listing" data-id="${l.id}" class="card card-shadow overflow-hidden flex flex-col text-left hover:border-mint min-w-0 w-full"><div class="aspect-[16/10]">${art(l.hue,'tag')}</div><div class="p-4 flex-1 flex flex-col gap-1.5 min-w-0"><span class="chip self-start max-w-full"><span class="truncate">${esc(catOf(l))}</span></span><h3 class="font-head font-semibold text-pine leading-snug break-words">${esc(l.title)}</h3>${showV?`<p class="text-sm text-bark/65 truncate">${esc(v.name)}</p>`:''}<p class="font-head font-semibold text-forest mt-auto pt-1">${l.price!=null?money(l.price):'Price on request'}</p></div></button>`};
+const tabBtn=(k,l)=>`<button data-act="btab" data-k="${k}" aria-pressed="${Q.tab===k}" class="flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-head font-medium ${Q.tab===k?'bg-forest text-white':'text-bark/70 hover:bg-mist'}">${l}</button>`;
+const chipRow=()=>[['','All']].concat(DB.cats.map(c=>[c.id,c.name])).map(([id,n])=>`<button data-act="bcat" data-id="${id}" aria-pressed="${Q.cat===id}" class="chip ${Q.cat===id?'chip-on':'!bg-white border border-sand hover:bg-mist'} !py-2 !text-[13px]">${esc(n)}</button>`).join('');
+function browseList(){const q=Q.q.trim().toLowerCase();
+ if(Q.tab==='vendors'){const L=DB.vendors.filter(isPublic).filter(v=>(!Q.cat||v.cat===Q.cat)&&(!q||(v.name+' '+v.desc+' '+catName(v.cat)+' '+v.address).toLowerCase().includes(q)||listingsOf(v.id).some(l=>l.status==='published'&&(l.title+' '+l.desc).toLowerCase().includes(q))));
+  L.sort(Q.sort==='rating'?(a,b)=>(b.rating||0)-(a.rating||0):(a,b)=>a.name.localeCompare(b.name));
+  return{n:L.length,html:L.length?`<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">${L.map(vendorCard).join('')}</div>`:empty('search','No vendors found','Try a different search or category.')}}
+ const L=pubListings().filter(l=>(!Q.cat||l.cat===Q.cat)&&(!q||(l.title+' '+l.desc+' '+catName(l.cat)+' '+vendor(l.vid).name).toLowerCase().includes(q)));
+ return{n:L.length,html:L.length?`<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">${L.map(l=>listingCard(l)).join('')}</div>`:empty('search','No products or services found','Try a different search or category.')}}
+function renderBrowse(){const r=browseList(),set=(s,h)=>{const e=$(s);if(e)e.innerHTML=h};set('#results',r.html);set('#rcount',r.n+(Q.tab==='vendors'?(r.n===1?' vendor':' vendors'):(r.n===1?' product / service':' products & services')));set('#cats',chipRow());set('#tabs',tabBtn('vendors','Vendors')+tabBtn('products','Products & Services'));const s=$('#sortwrap');if(s)s.classList.toggle('hidden',Q.tab!=='vendors')}
+route('/',()=>({title:'Browse',html:`<section class="bg-gradient-to-b from-beige/70 to-cream"><div class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-6 lg:pt-10 grid lg:grid-cols-[1.1fr_.9fr] gap-6 items-center"><div class="min-w-0"><h1 class="h1d text-4xl sm:text-5xl leading-[1.05]">Your Community.<br>Your Home.</h1><p class="text-bark/75 mt-3 max-w-md">Discover local vendors, products and services around you.</p>
+ <div class="mt-5 max-w-xl flex gap-2"><div class="relative flex-1 min-w-0">${ic('search','w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-bark/40')}<input id="bq" data-input="bq" value="${esc(Q.q)}" class="input !pl-10 !py-3" placeholder="Search vendors or products" aria-label="Search vendors, products and services" autocomplete="off"></div><button data-act="bsearch" class="btn btn-primary !px-4">Search</button></div></div><div class="hidden lg:block">${heroArt()}</div></div></section>
+ ${wrap(`<div class="flex flex-wrap items-center gap-3 mb-4"><div id="tabs" class="card p-1 flex w-full sm:w-auto"></div><div id="sortwrap" class="sm:ml-auto flex items-center gap-2 w-full sm:w-auto"><label for="bsort" class="text-sm text-bark/70 shrink-0">Sort by</label><select id="bsort" data-change="bsort" class="input sm:!w-auto"><option value="az" ${Q.sort==='az'?'selected':''}>A to Z</option><option value="rating" ${Q.sort==='rating'?'selected':''}>Highest rating</option></select></div></div><div id="cats" class="flex flex-wrap gap-2 mb-5"></div><p id="rcount" class="text-sm font-medium text-bark/70 mb-4"></p><div id="results"></div>`)}`,after:renderBrowse}));
+I.bq=t=>{Q.q=t.value;renderBrowse()};A.bsearch=()=>{Q.q=$('#bq').value;renderBrowse()};
+A.btab=t=>{Q.tab=t.dataset.k;renderBrowse()};A.bcat=t=>{Q.cat=Q.cat===t.dataset.id?'':t.dataset.id;renderBrowse()};I.bsort=t=>{Q.sort=t.value;renderBrowse()};
+A.listing=t=>{const l=DB.listings.find(x=>x.id===t.dataset.id),v=vendor(l.vid);modal(`<div class="rounded-2xl overflow-hidden aspect-[16/9] mb-4">${art(l.hue,'tag')}</div>${mHead(esc(l.title))}<div class="flex flex-wrap items-center gap-2 mb-3"><span class="chip">${esc(catOf(l))}</span><span class="font-head font-semibold text-forest">${l.price!=null?money(l.price):'Price on request'}</span></div><p class="text-sm text-bark/80 whitespace-pre-line break-words">${esc(l.desc)}</p><a href="#/vendor/${v.id}" data-act="close" class="btn btn-outline w-full mt-5">View ${esc(v.name)}</a>`)};
+
+/* ══════════ Vendor profile (public) ══════════ */
+const CONTACT={call:['Call','phone',v=>'tel:'+v.phone.replace(/ /g,'')],whatsapp:['WhatsApp','msg',v=>'https://wa.me/'+v.wa.replace(/\D/g,'')],email:['Email','mail',v=>'mailto:'+v.email],website:['Website','globe',v=>'https://'+v.web]};
+const contactPanel=v=>{
+ if(role()==='visitor')return `<div class="card p-5 text-center"><span class="mx-auto w-11 h-11 rounded-full bg-beige text-forest grid place-items-center">${ic('lock')}</span><h2 class="font-head font-semibold text-pine mt-3">Contact this vendor</h2><p class="text-sm text-bark/65 mt-1">Log in or register to see the vendor’s contact options.</p><div class="grid gap-2 mt-4"><a href="#/login" class="btn btn-primary">Log in</a><a href="#/register" class="btn btn-secondary">Register</a></div></div>`;
+ return `<div class="card p-5"><h2 class="font-head font-semibold text-pine mb-3">Contact this vendor</h2><div class="grid gap-2">${v.methods.map(m=>{const c=CONTACT[m];return `<a target="_blank" rel="noopener" href="${c[2](v)}" class="btn btn-outline justify-start">${ic(c[1],'w-4 h-4')}${c[0]}</a>`}).join('')}</div></div>`};
+A.gallery=t=>{const v=vendor(t.dataset.id);modal(`${mHead('Images',esc(v.name)+' · '+v.imgs+' images')}<div class="grid grid-cols-3 sm:grid-cols-4 gap-2">${Array.from({length:v.imgs},(_,i)=>`<div class="aspect-square rounded-xl overflow-hidden">${art(v.hue+i,'store')}</div>`).join('')}</div>`,{w:'sm:max-w-2xl'})};
+route('/vendor/:id',id=>{const v=vendor(id);if(!v||(!isPublic(v)&&role()!=='admin'))return{title:'Not available',html:wrap(empty('store','Vendor not available','This vendor profile is not available.',`<a href="#/" class="btn btn-primary">Back to browse</a>`),'max-w-lg')};
+ const L=listingsOf(v.id).filter(l=>l.status==='published');
+ return{title:v.name,html:wrap(`${back('/','Back to browse')}
+ <div class="grid grid-cols-3 sm:grid-cols-4 grid-rows-2 gap-2 h-56 sm:h-72 rounded-3xl overflow-hidden relative"><div class="col-span-2 row-span-2">${art(v.hue,'store')}</div>${[1,2,3,4].map(i=>`<div class="${i>2?'hidden sm:block':''}">${art(v.hue+i,'store')}</div>`).join('')}</div>
+ <button data-act="gallery" data-id="${v.id}" class="btn btn-outline btn-sm mt-3">${ic('image','w-4 h-4')}View all images (${v.imgs})</button>
+ <div class="grid lg:grid-cols-[1fr_20rem] gap-8 mt-6"><div class="min-w-0"><span class="chip">${esc(catOf(v))}</span><h1 class="h1d text-3xl sm:text-4xl mt-2 break-words">${esc(v.name)}</h1><div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm">${v.rating?`<span class="flex items-center gap-1.5">${stars(v.rating)}<b>${v.rating.toFixed(1)}</b></span>`:''}<span class="text-bark/70 flex items-center gap-1.5">${ic('pin','w-4 h-4 text-forest')}${esc(v.address)}</span></div>
+ <h2 class="font-head font-semibold text-pine mt-7 mb-2">About</h2><p class="text-bark/80 leading-relaxed whitespace-pre-line break-words max-w-prose">${esc(v.desc)}</p>
+ <h2 class="font-head font-semibold text-pine mt-8 mb-3">Products &amp; services</h2>${L.length?`<div class="grid sm:grid-cols-2 gap-4">${L.map(l=>listingCard(l,false)).join('')}</div>`:empty('tag','No listings yet','This vendor has not added any listings.')}</div>
+ <aside class="lg:sticky lg:top-24 self-start">${contactPanel(v)}</aside></div>`)}});
+
+/* ══════════ Login / password recovery / customer registration ══════════ */
+route('/login',()=>({title:'Log in',html:wrap(`<div class="card card-shadow p-6 sm:p-8"><h1 class="h1d text-3xl">Log in</h1><p class="text-sm text-bark/65 mt-1 mb-6">Welcome back to Mahali.</p><div data-form="login" class="space-y-4">${fld({n:'id',l:'Email or user ID',req:1,ic:'user',ac:'username'})}${pwFld('password','Password','current-password')}<button data-act="submit" class="btn btn-primary w-full">Log in</button></div><p class="text-sm text-center mt-5"><a href="#/forgot" class="text-forest font-semibold hover:underline">Forgot password?</a></p></div><p class="text-sm text-center text-bark/70 mt-5">New customer? <a href="#/register" class="text-forest font-semibold hover:underline">Register</a></p>`,'max-w-md')}));
+F.login=c=>{const d=check(c,{id:['req'],password:['req']});if(!d)return;const k=d.id.toLowerCase(),r=k.includes('admin')?'admin':k.includes('vendor')?'vendor':'customer';S.user={...DEMO[r]};persist();toast('Welcome back!');location.hash='#'+homeOf()};
+let FG={step:1,email:''};
+function fgRender(){const c=$('#fg');if(!c)return;c.innerHTML=FG.step===1?`<h1 class="h1d text-3xl">Reset password</h1><p class="text-sm text-bark/65 mt-1 mb-6">Enter your email and we will send you a reset link.</p><div data-form="fg1" class="space-y-4">${fld({n:'email',l:'Email',t:'email',ic:'mail',req:1,v:FG.email,ac:'email'})}<button data-act="submit" class="btn btn-primary w-full">Send reset link</button></div>`:FG.step===2?`${empty('mail','Check your email','If an account exists for '+esc(FG.email)+', a password reset link has been sent.')}<button data-act="fgnext" class="btn btn-outline w-full">Open reset link (prototype)</button>`:FG.step===3?`<h1 class="h1d text-3xl">Choose a new password</h1><p class="text-sm text-bark/65 mt-1 mb-6">Use at least 8 characters.</p><div data-form="fg3" class="space-y-4">${pwFld('password','New password','new-password')}${pwFld('confirm','Confirm password','new-password')}<button data-act="submit" class="btn btn-primary w-full">Update password</button></div>`:empty('checkcircle','Password updated','You can now log in with your new password.',`<a href="#/login" class="btn btn-primary">Log in</a>`)}
+route('/forgot',()=>({title:'Reset password',html:wrap(`${back('/login','Back to log in')}<div class="card card-shadow p-6 sm:p-8" id="fg"></div>`,'max-w-md'),after(){FG={step:1,email:''};fgRender()}}));
+F.fg1=c=>{const d=check(c,{email:['req','email']});if(!d)return;FG={step:2,email:d.email};fgRender()};A.fgnext=()=>{FG.step=3;fgRender()};
+F.fg3=c=>{const d=check(c,{password:['req','min8'],confirm:['req']});if(!d)return;if(d.password!==d.confirm){const e=$('[data-err=confirm]',c);e.textContent='Passwords do not match.';e.classList.remove('hidden');return}FG.step=4;fgRender()};
+route('/register',()=>({title:'Register',html:wrap(`<div class="card card-shadow p-6 sm:p-8"><h1 class="h1d text-3xl">Register</h1><p class="text-sm text-bark/65 mt-1 mb-6">Create a customer account.</p><div data-form="register" class="space-y-4"><div class="grid sm:grid-cols-2 gap-4">${fld({n:'first',l:'First name',req:1,ac:'given-name'})}${fld({n:'last',l:'Last name',req:1,ac:'family-name'})}</div>${fld({n:'phone',l:'Phone number',req:1,t:'tel',ic:'phone',ph:'+971 50 123 4567',ac:'tel'})}${fld({n:'email',l:'Email',req:1,t:'email',ic:'mail',ac:'email'})}${fld({n:'emirate',l:'Emirate',req:1,opts:[['','Select an emirate'],...EM]})}${fld({n:'uid',l:'User ID',req:1,ic:'user',ac:'username'})}${pwFld('password','Password','new-password')}<button data-act="submit" class="btn btn-primary w-full">Create account</button></div></div><p class="text-sm text-center text-bark/70 mt-5">Already registered? <a href="#/login" class="text-forest font-semibold hover:underline">Log in</a></p>`,'max-w-lg')}));
+F.register=c=>{const d=check(c,{first:['req'],last:['req'],phone:['req','phone'],email:['req','email'],emirate:['req'],uid:['req'],password:['req','min8']});if(!d)return;const u={id:'u'+(DB.customers.length+1),first:d.first,last:d.last,email:d.email,phone:d.phone,emirate:d.emirate,uid:d.uid,logins:1,status:'active'};DB.customers.push(u);S.user={role:'customer',cid:u.id,name:d.first+' '+d.last};persist();toast('Your account has been created.');location.hash='#/'};
+
+/* ══════════ Customer: account + feedback ══════════ */
+route('/account',()=>gate(['customer'],'customers')||{title:'My account',html:wrap(`${pageTitle('My account','View and update your account information.')}<div data-form="account" class="card card-shadow p-5 sm:p-6 space-y-4">${(u=>`<div class="grid sm:grid-cols-2 gap-4">${fld({n:'first',l:'First name',req:1,v:u.first})}${fld({n:'last',l:'Last name',req:1,v:u.last})}</div><div class="grid sm:grid-cols-2 gap-4">${fld({n:'phone',l:'Phone number',req:1,v:u.phone,t:'tel'})}${fld({n:'email',l:'Email',req:1,v:u.email,t:'email'})}</div><div class="grid sm:grid-cols-2 gap-4">${fld({n:'emirate',l:'Emirate',req:1,opts:EM,v:u.emirate})}${fld({n:'uid',l:'User ID',req:1,v:u.uid})}</div>`)(meC())}<button data-act="submit" class="btn btn-primary">Save changes</button></div>`,'max-w-2xl')});
+F.account=c=>{const d=check(c,{first:['req'],last:['req'],phone:['req','phone'],email:['req','email'],emirate:['req'],uid:['req']});if(!d)return;Object.assign(meC(),d);S.user.name=d.first+' '+d.last;persist();toast('Your account information has been updated.')};
+const feedbackPage=(who,fillName)=>({title:'Feedback',html:wrap(`${pageTitle('Feedback','Tell us what you think about Mahali.')}<div id="fbwrap" data-form="feedback" class="card card-shadow p-5 sm:p-6 space-y-4">${fld({n:'name',l:'Name',req:1,v:fillName})}${fld({n:'email',l:'Email',req:1,t:'email'})}${fld({n:'msg',l:'Your feedback',req:1,rows:6})}<button data-act="submit" class="btn btn-primary">Send feedback</button></div>`,'max-w-2xl')});
+F.feedback=c=>{const d=check(c,{name:['req'],email:['req','email'],msg:['req']});if(!d)return;c.innerHTML=empty('checkcircle','Thank you for your feedback','Your feedback has been sent to Mahali.',`<a href="#${homeOf()}" class="btn btn-primary">Done</a>`)};
+route('/feedback',()=>gate(['customer'],'customers')||feedbackPage('customer',S.user.name));
+
+/* ══════════ Shared vendor form (registration · resubmission · profile update) ══════════ */
+const IMGS={vf:[]};
+const imgZone=(k,max,cur=0,label='Profile images')=>`<div><p class="label">${label}</p><label class="block card border-dashed !border-2 p-5 text-center cursor-pointer hover:bg-mist/40"><span class="text-forest">${ic('upload','w-6 h-6 mx-auto')}</span><span class="block text-sm font-medium mt-1">Choose images to upload</span><span class="block text-xs text-bark/60">JPG, JPEG, PNG or WebP · max 5 MB each · up to 4,000 × 4,000 px · up to ${max} images${cur?` (${cur} already on your profile)`:''}</span><input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple class="sr-only" data-change="img" data-k="${k}" data-max="${max-cur}"></label><p class="text-xs text-brick mt-1 hidden" id="imgerr_${k}" role="alert"></p><div id="imgs_${k}" class="grid grid-cols-4 sm:grid-cols-6 gap-2 mt-3">${imgGrid(k)}</div></div>`;
+const imgGrid=k=>IMGS[k].map((s,i)=>`<div class="relative aspect-square rounded-lg overflow-hidden border border-sand"><img src="${s}" alt="Selected image ${i+1}" class="w-full h-full object-cover"><button data-act="rmImg" data-k="${k}" data-i="${i}" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/95 grid place-items-center text-bark/70" aria-label="Remove image ${i+1}">${ic('x','w-3 h-3')}</button></div>`).join('');
+I.img=t=>{const k=t.dataset.k,max=+t.dataset.max,err=$('#imgerr_'+k),msgs=[];[...t.files].forEach(f=>{
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type)){msgs.push(f.name+': use JPG, JPEG, PNG or WebP.');return}
+  if(f.size>5*1024*1024){msgs.push(f.name+': larger than 5 MB.');return}
+  if(IMGS[k].length>=max){if(!msgs.includes('You can add up to '+max+' images.'))msgs.push('You can add up to '+max+' images.');return}
+  const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{if(im.width>4000||im.height>4000){err.textContent=f.name+': larger than 4,000 × 4,000 px.';err.classList.remove('hidden');return}if(IMGS[k].length<max){IMGS[k].push(r.result);$('#imgs_'+k).innerHTML=imgGrid(k)}};im.src=r.result};r.readAsDataURL(f)});
+ err.textContent=msgs.join(' ');err.classList.toggle('hidden',!msgs.length);t.value=''};
+A.rmImg=t=>{IMGS[t.dataset.k].splice(+t.dataset.i,1);$('#imgs_'+t.dataset.k).innerHTML=imgGrid(t.dataset.k)};
+I.catOther=t=>{$('#otherWrap').classList.toggle('hidden',t.value!=='c6')};
+function vForm(v,o){IMGS.vf=[];const mm=v.methods||[];
+ return `<div data-form="${o.form}" class="space-y-6"><section class="card card-shadow p-5 space-y-4"><h2 class="font-head font-semibold text-pine">Business information</h2>${fld({n:'name',l:'Vendor / business name',req:1,v:v.name,max:120})}${fld({n:'cat',l:'Category',req:1,opts:[['','Select a category'],...DB.cats.map(c=>[c.id,c.name])],v:v.cat,attr:'data-change="catOther"'})}<div id="otherWrap" class="${v.cat==='c6'?'':'hidden'}">${fld({n:'other',l:'Other category description',v:v.other,max:80,ph:'Describe your category'})}</div>${fld({n:'desc',l:'Profile description',req:1,rows:5,v:v.desc,max:3000})}${fld({n:'address',l:'Address',req:1,v:v.address,max:300})}</section>
+ <section class="card card-shadow p-5 space-y-4"><h2 class="font-head font-semibold text-pine">Contact information</h2><div class="grid sm:grid-cols-2 gap-4">${fld({n:'phone',l:'Phone number',req:1,t:'tel',v:v.phone,ph:'+971 4 123 4567'})}${fld({n:'wa',l:'WhatsApp number',t:'tel',v:v.wa})}${fld({n:'email',l:'Email',req:1,t:'email',v:v.email})}${fld({n:'web',l:'Website',v:v.web,ph:'yourbusiness.ae'})}</div><fieldset><legend class="label">Contact options shown to customers</legend><div class="flex flex-wrap gap-2">${Object.keys(CONTACT).map(k=>`<label class="cursor-pointer"><input type="checkbox" name="m_${k}" class="peer sr-only" ${mm.includes(k)?'checked':''}><span class="chip !bg-white border border-sand !py-2 peer-checked:!bg-forest peer-checked:text-white peer-focus-visible:ring-2 ring-mint">${CONTACT[k][0]}</span></label>`).join('')}</div></fieldset></section>
+ <section class="card card-shadow p-5 space-y-4"><h2 class="font-head font-semibold text-pine">Images</h2>${imgZone('vf',50,o.cur||0)}</section>
+ ${o.pw?`<section class="card card-shadow p-5 space-y-4"><h2 class="font-head font-semibold text-pine">Account</h2>${pwFld('password','Password','new-password')}</section>`:''}
+ ${o.note||''}<button data-act="submit" class="btn btn-primary w-full sm:w-auto">${o.btn}</button></div>`}
+const vRules=(pw)=>({name:['req',rw],cat:['req'],other:[(v,d)=>d.cat==='c6'&&!v?'Describe the category.':'',rw],desc:['req',rw],address:['req',rw],phone:['req','phone'],wa:['phone'],email:['req','email'],...(pw?{password:['req','min8']}:{})});
+const vVals=d=>({name:d.name.trim(),cat:d.cat,other:d.cat==='c6'?d.other.trim():'',desc:d.desc.trim(),address:d.address.trim(),phone:d.phone,wa:d.wa,email:d.email,web:d.web,methods:Object.keys(CONTACT).filter(k=>d['m_'+k])});
+route('/vendor-register',()=>role()==='vendor'?{redirect:'/dashboard'}:{title:'Vendor registration',html:wrap(`${back('/','Back to browse')}${pageTitle('Vendor registration','Submit your business for review by the Mahali administrator.')}<div id="vreg">${vForm({},{form:'vreg',btn:'Submit application',pw:true})}</div>`,'max-w-3xl')});
+F.vreg=c=>{const d=check(c,vRules(true));if(!d)return;const val=vVals(d);DB.vendors.push({id:'v'+(DB.vendors.length+1),...val,rating:null,imgs:IMGS.vf.length,hue:DB.vendors.length%7,status:'pending',sub:null,billEnd:'—',reason:'',upd:null,updReject:'',canReinstate:false,justApproved:false});
+ $('#vreg').innerHTML=`<div class="card card-shadow p-6">${empty('checkcircle','Application submitted','The Mahali administrator will review your application. You will be notified by email when it is approved or rejected.',`<a href="#/" class="btn btn-primary">Back to browse</a>`)}</div>`;window.scrollTo(0,0)};
+/* ══════════ Vendor ══════════ */
+const VEN=()=>gate(['vendor'],'vendors')||(['pending','rejected'].includes(me().status)?{redirect:'/vendor-application'}:null);
+const susp=v=>v.status==='suspended';
+function vBanners(v){let h='';
+ if(v.justApproved)h+=notice('ok',`<b>Your application was approved.</b> You can now manage your profile and listings.<button data-act="dismissApproved" class="block mt-1 text-forest font-semibold hover:underline">Dismiss</button>`);
+ if(susp(v))h+=notice('err',`<b>Your account is suspended.</b> Payment was not received, so your profile is hidden from the platform. Your profile and listings are saved. A payment status notification was sent to you and the Mahali administrator.${v.canReinstate?`<span class="block mt-2">Payment has been received. You can make your account live again.</span><button data-act="reinstate" class="btn btn-primary btn-sm mt-2">Reinstate my account</button>`:(CUR.path==='/dashboard/subscription'?'<span class="block mt-1">Complete payment below to reinstate your account.</span>':`<a href="#/dashboard/subscription" class="block mt-1 font-semibold underline">Go to Subscription</a>`)}`);
+ else if(['Payment failed','Incomplete'].includes(v.sub))h+=notice('warn',`<b>Payment ${v.sub==='Incomplete'?'incomplete':'failed'}.</b> A payment status notification was sent to you and the Mahali administrator.`);
+ if(v.upd)h+=notice('warn',`<b>Profile update pending approval.</b> Your current profile stays visible until the administrator approves the changes.`);
+ if(v.updReject)h+=notice('err',`<b>Your last profile update was not approved.</b> Reason: ${esc(v.updReject)}`);
+ return h?`<div class="space-y-3 mb-6">${h}</div>`:''}
+A.dismissApproved=()=>{me().justApproved=false;rerender()};
+A.reinstate=()=>{const v=me();v.status='approved';v.canReinstate=false;toast('Your account is live again.');rerender()};
+const dash=(t,s,body,act='')=>wrap(`${pageTitle(t,s,act)}${vBanners(me())}${body}`,'max-w-4xl');
+route('/dashboard',()=>VEN()||{redirect:'/dashboard/profile'});
+
+/* application status */
+let RES=false;
+route('/vendor-application',()=>{const g=gate(['vendor'],'vendors');if(g)return g;const v=me();if(!['pending','rejected'].includes(v.status))return{redirect:'/dashboard'};
+ if(v.status==='pending')return{title:'Application status',html:wrap(`${pageTitle('Application status')}<div class="card card-shadow p-6">${notice('warn',`<b>Your application is pending review.</b> The Mahali administrator is reviewing it. You will be notified by email when it is approved or rejected.`)}<dl class="grid sm:grid-cols-2 gap-4 mt-5 text-sm"><div><dt class="text-xs text-bark/50">Business</dt><dd class="font-medium">${esc(v.name)}</dd></div><div><dt class="text-xs text-bark/50">Category</dt><dd class="font-medium">${esc(catOf(v))}</dd></div><div class="sm:col-span-2"><dt class="text-xs text-bark/50">Address</dt><dd class="font-medium">${esc(v.address)}</dd></div></dl></div>`,'max-w-2xl')};
+ return{title:'Application status',html:wrap(`${pageTitle('Application status')}<div class="card card-shadow p-6">${notice('err',`<b>Your application was rejected.</b><span class="block mt-1">Reason: ${esc(v.reason)}</span>`)}<p class="text-sm text-bark/70 mt-4">Your submitted details have been kept. Correct the issue and resubmit for review.</p>${RES?'':`<button data-act="resOpen" class="btn btn-primary mt-4">Edit and resubmit</button>`}</div>${RES?`<div class="mt-6" id="vres">${vForm(v,{form:'vresub',btn:'Resubmit application',cur:v.imgs})}</div>`:''}`,'max-w-3xl'),after(){}}});
+A.resOpen=()=>{RES=true;rerender()};
+F.vresub=c=>{const d=check(c,vRules(false));if(!d)return;const v=me();Object.assign(v,vVals(d),{status:'pending',reason:''});RES=false;toast('Application resubmitted for review.');rerender()};
+
+/* profile */
+route('/dashboard/profile',()=>VEN()||(v=>({title:'Profile',html:dash('Profile','Manage your business profile and images.',`<fieldset ${susp(v)?'disabled':''} class="min-w-0">${vForm({...v,...(v.upd||{})},{form:'vprof',btn:'Submit changes for approval',cur:v.imgs,note:notice('info','Profile changes are reviewed by the administrator before they go live. Until approved, your current profile remains visible.')})}</fieldset>`)}))(me()));
+F.vprof=c=>{const d=check(c,vRules(false));if(!d)return;const v=me();v.upd={...vVals(d),date:'Today'};v.updReject='';toast('Changes submitted for admin approval.');rerender()};
+
+/* listings */
+IMGS.lf=[];
+const lrow=l=>`<div class="card p-4 flex flex-wrap items-center gap-4"><div class="w-16 h-16 rounded-xl overflow-hidden shrink-0">${art(l.hue,'tag')}</div><div class="flex-1 min-w-[10rem]"><p class="font-head font-semibold text-pine break-words">${esc(l.title)}</p><p class="text-xs text-bark/60 mt-0.5">${esc(catOf(l))} · ${l.price!=null?money(l.price):'Price on request'}</p></div><div class="flex gap-2"><button data-act="lEdit" data-id="${l.id}" class="btn btn-outline btn-sm" ${susp(me())?'disabled':''}>${ic('edit','w-4 h-4')}Edit</button><button data-act="lDel" data-id="${l.id}" class="btn btn-outline btn-sm !text-brick !border-brick/40" ${susp(me())?'disabled':''}>${ic('trash','w-4 h-4')}Remove</button></div></div>`;
+const listHtml=()=>{const L=listingsOf(me().id);return L.length?`<div class="space-y-3">${L.map(lrow).join('')}</div>`:empty('tag','No listings yet','Add your first product or service.')};
+route('/dashboard/listings',()=>VEN()||{title:'Listings',html:dash('Listings','Add, edit or remove your products and services.',`<div id="llist">${listHtml()}</div>`,`<button data-act="lAdd" class="btn btn-primary" ${susp(me())?'disabled':''}>${ic('plus','w-4 h-4')}Add listing</button>`)});
+function lModal(l){IMGS.lf=[];modal(`${mHead(l.id?'Edit listing':'Add listing')}<div data-form="listing" data-id="${l.id||''}" class="space-y-4">${fld({n:'title',l:'Name / title',req:1,v:l.title,max:120})}${fld({n:'cat',l:'Category',req:1,opts:[['','Select a category'],...DB.cats.map(c=>[c.id,c.name])],v:l.cat,attr:'data-change="catOther"'})}<div id="otherWrap" class="${l.cat==='c6'?'':'hidden'}">${fld({n:'other',l:'Other category description',v:l.other,max:80})}</div>${fld({n:'desc',l:'Description',req:1,rows:4,v:l.desc,max:2000})}${fld({n:'price',l:'Price (AED)',v:l.price!=null?l.price:'',ph:'25.50',hint:'Optional. Up to two decimal places.'})}${imgZone('lf',5,0,'Images')}<button data-act="submit" class="btn btn-primary w-full">${l.id?'Save changes':'Add listing'}</button></div>`,{w:'sm:max-w-lg'})}
+A.lAdd=()=>lModal({});A.lEdit=t=>lModal(DB.listings.find(l=>l.id===t.dataset.id));
+F.listing=c=>{const d=check(c,{title:['req',rw],cat:['req'],other:[(v,d)=>d.cat==='c6'&&!v?'Describe the category.':'',rw],desc:['req',rw],price:['price']});if(!d)return;const o={title:d.title.trim(),cat:d.cat,other:d.cat==='c6'?d.other.trim():'',desc:d.desc.trim(),price:d.price===''?null:parseFloat(d.price)};
+ if(c.dataset.id)Object.assign(DB.listings.find(l=>l.id===c.dataset.id),o);else DB.listings.push({id:'l'+(DB.listings.length+1),vid:me().id,hue:DB.listings.length%7,status:'published',...o});
+ closeModal();toast(c.dataset.id?'Listing updated.':'Listing added.');$('#llist').innerHTML=listHtml()};
+A.lDel=t=>{const l=DB.listings.find(x=>x.id===t.dataset.id);confirmBox({title:'Remove this listing?',text:esc(l.title)+' will no longer appear on your profile.',label:'Remove listing',danger:true,ok:()=>{DB.listings=DB.listings.filter(x=>x.id!==l.id);toast('Listing removed.');$('#llist').innerHTML=listHtml()}})};
+
+/* subscription (Stripe) */
+const subNote={Active:'Your subscription is active.','Payment failed':'Your last payment failed.',Incomplete:'Your payment has not been completed.',Canceled:'Your subscription was canceled.'};
+route('/dashboard/subscription',()=>VEN()||(v=>({title:'Subscription',html:dash('Subscription','Your vendor subscription and payment status.',`<div class="card card-shadow p-5 mb-6"><div class="flex flex-wrap items-center gap-3"><h2 class="font-head font-semibold text-pine">Status</h2>${stat(v.sub||'Incomplete')}</div><p class="text-sm text-bark/70 mt-2">${subNote[v.sub||'Incomplete']}</p>${v.sub==='Active'?`<p class="text-sm mt-2"><span class="text-bark/60">Current billing period ends:</span> <b>${esc(v.billEnd)}</b></p>`:''}</div>
+ <h2 class="font-head font-semibold text-pine mb-3">Subscription plans</h2><div class="grid sm:grid-cols-2 gap-4">${DB.plans.map(p=>`<div class="card card-shadow p-5 flex flex-col"><h3 class="font-head font-semibold text-pine">${p.name}</h3><p class="text-sm text-bark/60">${p.dur}</p><p class="font-head font-bold text-2xl text-pine mt-3">AED xxx</p><p class="text-[11px] text-bark/50 mb-4">Placeholder price — plans and prices to be confirmed by Mahali.</p><button data-act="plan" data-id="${p.id}" class="btn btn-primary mt-auto">${v.sub==='Active'?'Change plan':'Subscribe'}</button></div>`).join('')}</div>`)}))(me()));
+A.plan=t=>{const p=DB.plans.find(x=>x.id===t.dataset.id);modal(`${mHead('Continue to payment',p.name)}<div class="card p-4 text-sm">${ic('card','w-5 h-5 text-forest mb-2')}<p>You will be directed to Stripe to complete your payment securely.</p></div><p class="text-[11px] text-bark/50 mt-3">Prototype: choose the payment outcome returned by Stripe.</p><div class="grid gap-2 mt-3"><button data-act="pay" data-ok="1" class="btn btn-primary">Payment successful</button><button data-act="pay" data-ok="0" class="btn btn-outline">Payment failed</button></div>`)};
+A.pay=t=>{const v=me();closeModal();if(t.dataset.ok==='1'){v.sub='Active';v.billEnd='21 Oct 2026';if(susp(v))v.canReinstate=true;toast(susp(v)?'Payment received. You can now reinstate your account.':'Payment received. Your subscription is active.')}else{v.sub='Payment failed';toast('Payment failed. A notification was sent to you and the Mahali administrator.','err')}rerender()};
+
+route('/dashboard/feedback',()=>VEN()||feedbackPage('vendor',me().name));
+/* ══════════ Admin panel ══════════ */
+const ADM=()=>gate(['admin'],'administrators');
+const row=(inner)=>`<div class="card p-4 flex flex-wrap items-center gap-x-4 gap-y-3">${inner}</div>`;
+const stat2=(l,v,s='')=>`<div class="card card-shadow p-4 min-w-0"><p class="text-sm text-bark/60">${l}</p><p class="font-head font-semibold text-3xl text-pine mt-1">${v}</p>${s?`<p class="text-xs text-bark/55 mt-1">${s}</p>`:''}</div>`;
+route('/admin',()=>ADM()||(()=>{const V=DB.vendors,C=DB.customers,pa=V.filter(v=>v.status==='pending').length,pu=V.filter(v=>v.upd).length,ret=C.filter(c=>c.logins>1).length,nw=C.filter(c=>c.logins===1).length;
+ return{title:'Overview',html:wrap(`${pageTitle('Overview','Basic counts from the platform.')}<h2 class="font-head font-semibold text-pine mb-3">Vendors</h2><div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">${stat2('Total vendors',V.length)}${stat2('Active vendors',V.filter(v=>v.status==='approved').length)}${stat2('Suspended vendors',V.filter(v=>v.status==='suspended').length)}${stat2('Pending approvals',pa+pu,pa+' applications · '+pu+' profile updates')}${stat2('Approved applications',V.filter(v=>['approved','suspended'].includes(v.status)).length)}${stat2('Rejected applications',V.filter(v=>v.status==='rejected').length)}</div>
+ <h2 class="font-head font-semibold text-pine mb-3">Customers</h2><div class="grid grid-cols-2 lg:grid-cols-4 gap-4">${stat2('Registered customers',C.length)}${stat2('Customers who have logged in',C.filter(c=>c.logins>0).length)}${stat2('New customers',nw,'Logged in once')}${stat2('Returning customers',ret,'Logged in more than once')}</div>`)}})());
+
+/* vendors */
+let AV='all';
+const vList=()=>{const L=DB.vendors.filter(v=>AV==='all'||(AV==='pending'?(v.status==='pending'||v.upd):v.status===AV));return L.length?`<div class="space-y-3">${L.map(v=>row(`<div class="flex-1 min-w-[12rem]"><p class="font-head font-semibold text-pine break-words">${esc(v.name)}</p><p class="text-xs text-bark/60 mt-0.5">${esc(catOf(v))} · ${esc(v.address)}</p></div><div class="flex flex-wrap items-center gap-2">${stat(v.status)}${v.sub?stat(v.sub):''}${v.upd?`<span class="chip !bg-sun/40 text-clay">Profile update pending</span>`:''}</div><button data-act="vView" data-id="${v.id}" class="btn btn-outline btn-sm">View</button>`)).join('')}</div>`:empty('store','No vendors here','There are no vendors with this status.')};
+route('/admin/vendors',()=>ADM()||(AV='all',{title:'Vendors',html:wrap(`${pageTitle('Vendors','Review applications and manage vendor accounts.')}<div id="vtabs" class="flex flex-wrap gap-2 mb-5">${[['all','All'],['pending','Pending'],['approved','Approved'],['rejected','Rejected'],['suspended','Suspended']].map(([k,l])=>`<button data-act="vtab" data-k="${k}" aria-pressed="${k==='all'}" class="chip ${k==='all'?'chip-on':'!bg-white border border-sand hover:bg-mist'} !py-2">${l}</button>`).join('')}</div><div id="vlist">${vList()}</div>`)}));
+A.vtab=t=>{AV=t.dataset.k;$$('#vtabs button').forEach(b=>{const on=b===t;b.classList.toggle('chip-on',on);b.classList.toggle('!bg-white',!on);b.classList.toggle('border',!on);b.setAttribute('aria-pressed',on)});$('#vlist').innerHTML=vList()};
+const kv=(k,v)=>`<div class="min-w-0"><dt class="text-xs text-bark/50">${k}</dt><dd class="text-sm font-medium break-words">${v||'—'}</dd></div>`;
+A.vView=t=>{const v=vendor(t.dataset.id),mode=v.status==='pending'?'app':v.upd?'upd':'';
+ const diff=v.upd?`<section class="mt-5"><h3 class="font-head font-semibold text-pine text-sm mb-2">Requested profile changes</h3>${['desc','address','name','phone','wa','email','web'].filter(k=>v.upd[k]!==undefined&&v.upd[k]!==v[k]).map(k=>`<div class="grid sm:grid-cols-2 gap-2 mb-2"><div class="rounded-xl bg-beige/70 p-3"><p class="text-xs text-bark/50">Current ${k==='desc'?'description':k}</p><p class="text-sm break-words">${esc(v[k])}</p></div><div class="rounded-xl bg-mist p-3"><p class="text-xs text-forest">Proposed</p><p class="text-sm break-words">${esc(v.upd[k])}</p></div></div>`).join('')}</section>`:'';
+ const decide=mode?`<div data-form="vdec" data-id="${v.id}" data-mode="${mode}" class="mt-5 space-y-3"><div class="grid grid-cols-2 gap-2">${[['approve',mode==='app'?'Approve':'Approve update'],['reject',mode==='app'?'Reject':'Reject update']].map(([x,l],i)=>`<label class="card p-2.5 text-center text-sm font-head font-medium cursor-pointer has-[:checked]:border-forest has-[:checked]:bg-mist"><input type="radio" name="dec" value="${x}" ${i?'':'checked'} class="sr-only">${l}</label>`).join('')}</div>${fld({n:'reason',l:'Reason for rejection',rows:3,hint:'Required if rejecting. The vendor is notified with this reason.'})}<button data-act="submit" class="btn btn-primary w-full">Confirm</button></div>`
+  :v.status==='approved'?`<button data-act="vSusp" data-id="${v.id}" class="btn btn-danger w-full mt-5">Suspend account</button>`:v.status==='suspended'?`<button data-act="vReact" data-id="${v.id}" class="btn btn-primary w-full mt-5">Reactivate account</button>`:'';
+ modal(`${mHead(esc(v.name),'Vendor application and account')}<div class="flex flex-wrap gap-2 mb-4">${stat(v.status)}${v.sub?stat(v.sub):''}</div><dl class="grid sm:grid-cols-2 gap-4">${kv('Category',esc(catOf(v)))}${kv('Address',esc(v.address))}${kv('Phone',esc(v.phone))}${kv('WhatsApp',esc(v.wa))}${kv('Email',esc(v.email))}${kv('Website',esc(v.web))}${kv('Contact options shown',v.methods.map(m=>CONTACT[m][0]).join(', '))}${kv('Profile images',String(v.imgs))}${v.sub?kv('Subscription',esc(v.sub)):''}${v.sub==='Active'?kv('Billing period ends',esc(v.billEnd)):''}<div class="sm:col-span-2">${kv('Description',esc(v.desc))}</div>${v.status==='rejected'?`<div class="sm:col-span-2">${kv('Rejection reason',esc(v.reason))}</div>`:''}</dl>${diff}${decide}`,{w:'sm:max-w-2xl'})};
+F.vdec=c=>{const d=collect(c),v=vendor(c.dataset.id),reject=d.dec==='reject';if(reject&&!(d.reason||'').trim()){const e=$('[data-err=reason]',c);e.textContent='Add a reason so the vendor knows what to fix.';e.classList.remove('hidden');return}
+ if(c.dataset.mode==='app'){if(reject){v.status='rejected';v.reason=d.reason.trim();toast('Application rejected. The vendor was notified with the reason.')}else{v.status='approved';v.sub='Incomplete';v.justApproved=true;toast('Application approved. The vendor was notified.')}}
+ else{if(reject){v.updReject=d.reason.trim();v.upd=null;toast('Update rejected. The vendor was notified with the reason.')}else{const u=v.upd;['name','cat','other','desc','address','phone','wa','email','web','methods'].forEach(k=>{if(u[k]!==undefined)v[k]=u[k]});v.upd=null;v.updReject='';toast('Update approved. The new profile is live.')}}
+ closeModal();$('#vlist').innerHTML=vList()};
+A.vSusp=t=>{const v=vendor(t.dataset.id);closeModal();confirmBox({title:'Suspend '+esc(v.name)+'?',text:'The vendor will be hidden from the platform. Their data is kept.',label:'Suspend account',danger:true,ok:()=>{v.status='suspended';toast('Account suspended.');$('#vlist').innerHTML=vList()}})};
+A.vReact=t=>{const v=vendor(t.dataset.id);v.status='approved';closeModal();toast('Account reactivated.');$('#vlist').innerHTML=vList()};
+
+/* customers */
+const cList=()=>`<div class="space-y-3">${DB.customers.map(c=>row(`<div class="flex-1 min-w-[12rem]"><p class="font-head font-semibold text-pine">${esc(c.first+' '+c.last)}</p><p class="text-xs text-bark/60 mt-0.5 break-all">${esc(c.email)} · ${esc(c.emirate)} · ID ${esc(c.uid)}</p></div>${stat(c.status)}<button data-act="cTog" data-id="${c.id}" class="btn btn-outline btn-sm">${c.status==='active'?'Suspend':'Activate'}</button>`)).join('')}</div>`;
+route('/admin/customers',()=>ADM()||{title:'Customers',html:wrap(`${pageTitle('Customers','View customer accounts and manage account status.')}<div id="clist">${cList()}</div>`)});
+A.cTog=t=>{const c=DB.customers.find(x=>x.id===t.dataset.id),on=c.status==='active';confirmBox({title:(on?'Suspend ':'Activate ')+esc(c.first+' '+c.last)+'?',text:on?'They will not be able to use their account.':'They will be able to use their account again.',label:on?'Suspend':'Activate',danger:on,ok:()=>{c.status=on?'suspended':'active';toast('Customer account '+(on?'suspended.':'activated.'));$('#clist').innerHTML=cList()}})};
+
+/* listings */
+const aList=()=>DB.listings.length?`<div class="space-y-3">${DB.listings.map(l=>row(`<div class="w-14 h-14 rounded-xl overflow-hidden shrink-0">${art(l.hue,'tag')}</div><div class="flex-1 min-w-[12rem]"><p class="font-head font-semibold text-pine break-words">${esc(l.title)}</p><p class="text-xs text-bark/60 mt-0.5">${esc(vendor(l.vid).name)} · ${esc(catOf(l))} · ${l.price!=null?money(l.price):'Price on request'}</p></div>${stat(l.status)}<div class="flex gap-2"><button data-act="aTog" data-id="${l.id}" class="btn btn-outline btn-sm">${l.status==='published'?'Unpublish':'Publish'}</button><button data-act="aDel" data-id="${l.id}" class="btn btn-outline btn-sm !text-brick !border-brick/40" aria-label="Remove ${esc(l.title)}">${ic('trash','w-4 h-4')}</button></div>`)).join('')}</div>`:empty('tag','No listings','Vendor listings will appear here.');
+route('/admin/listings',()=>ADM()||{title:'Listings',html:wrap(`${pageTitle('Product & service listings','View listings and manage their status.')}<div id="alist">${aList()}</div>`)});
+A.aTog=t=>{const l=DB.listings.find(x=>x.id===t.dataset.id);l.status=l.status==='published'?'unpublished':'published';toast('Listing '+l.status+'.');$('#alist').innerHTML=aList()};
+A.aDel=t=>{const l=DB.listings.find(x=>x.id===t.dataset.id);confirmBox({title:'Remove this listing?',text:esc(l.title)+' will be removed from the vendor profile.',label:'Remove listing',danger:true,ok:()=>{DB.listings=DB.listings.filter(x=>x.id!==l.id);toast('Listing removed.');$('#alist').innerHTML=aList()}})};
+
+/* categories */
+const catList=()=>`<div class="space-y-3">${DB.cats.map(c=>row(`<div class="flex-1 min-w-[10rem]"><p class="font-head font-semibold text-pine">${esc(c.name)}</p></div>${c.id==='c6'?'':`<button data-act="catEdit" data-id="${c.id}" class="btn btn-outline btn-sm">${ic('edit','w-4 h-4')}Edit</button><button data-act="catDel" data-id="${c.id}" class="btn btn-outline btn-sm !text-brick !border-brick/40" aria-label="Delete ${esc(c.name)}">${ic('trash','w-4 h-4')}</button>`}`)).join('')}</div>`;
+route('/admin/categories',()=>ADM()||{title:'Categories',html:wrap(`${pageTitle('Categories','Categories used for vendors and products / services.')}<div data-form="catAdd" class="flex gap-2 mb-5 max-w-lg"><div class="flex-1 min-w-0">${fld({n:'name',l:'New category name',ph:'e.g. Pet Services'})}</div><button data-act="submit" class="btn btn-primary self-end">${ic('plus','w-4 h-4')}Add</button></div><div id="catlist">${catList()}</div>`,'max-w-3xl')});
+F.catAdd=c=>{const d=check(c,{name:['req',(v)=>DB.cats.some(x=>x.name.toLowerCase()===v.toLowerCase())?'This category already exists.':'']});if(!d)return;DB.cats.splice(DB.cats.length-1,0,{id:'c'+Date.now(),name:d.name.trim()});$('[name=name]',c).value='';toast('Category added.');$('#catlist').innerHTML=catList()};
+A.catEdit=t=>{const c=DB.cats.find(x=>x.id===t.dataset.id);modal(`${mHead('Edit category')}<div data-form="catEdit" data-id="${c.id}" class="space-y-3">${fld({n:'name',l:'Category name',req:1,v:c.name})}<button data-act="submit" class="btn btn-primary w-full">Save</button></div>`)};
+F.catEdit=c=>{const d=check(c,{name:['req']});if(!d)return;DB.cats.find(x=>x.id===c.dataset.id).name=d.name.trim();closeModal();toast('Category updated.');$('#catlist').innerHTML=catList()};
+A.catDel=t=>{const c=DB.cats.find(x=>x.id===t.dataset.id),n=DB.listings.filter(l=>l.cat===c.id).length+DB.vendors.filter(v=>v.cat===c.id).length;
+ if(n)return confirmBox({title:'Category in use',text:esc(c.name)+' is used by '+n+' vendor(s) or listing(s) and cannot be deleted.',label:'OK',ok:()=>{}});
+ confirmBox({title:'Delete '+esc(c.name)+'?',text:'This category will be removed.',label:'Delete',danger:true,ok:()=>{DB.cats=DB.cats.filter(x=>x.id!==c.id);toast('Category deleted.');$('#catlist').innerHTML=catList()}})};
+
+/* ══════════ Prototype reviewer control (not part of the product UI) ══════════ */
+A.demo=()=>{const cur=!S.user?'visitor':S.user.role==='vendor'?(S.user.vid==='v9'?'vendor-pending':S.user.vid==='v10'?'vendor-rejected':S.user.vid==='v6'?'vendor-suspended':'vendor'):S.user.role;
+ modal(`${mHead('Prototype: view as','Reviewer control — not part of the product.')}<div class="grid gap-2">${[['visitor','Visitor'],['customer','Customer'],['vendor','Vendor — approved'],['vendor-pending','Vendor — application pending'],['vendor-rejected','Vendor — application rejected'],['vendor-suspended','Vendor — suspended (payment)'],['admin','Admin']].map(([k,l])=>`<button data-act="role" data-r="${k}" class="btn ${cur===k?'btn-primary':'btn-outline'} justify-start">${l}</button>`).join('')}</div>`)};
+A.role=t=>{const r=t.dataset.r;S.user=DEMO[r]?{...DEMO[r]}:null;persist();closeModal();location.hash='#'+homeOf();nav()};
+(function(){const b=document.createElement('button');b.dataset.act='demo';b.setAttribute('aria-label','Prototype: view as another role');b.className='btn btn-secondary btn-sm shadow-lg fixed z-[60] left-3 bottom-3 !rounded-full';b.innerHTML=ic('eye','w-4 h-4')+'Prototype';document.body.appendChild(b);
+ if(!location.hash)location.hash='#/';nav()})();
+</script>
+</body>
+</html>
